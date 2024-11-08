@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Author Network Force Layout</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 20px;
+        }
+        svg {
+            border: 1px solid #ddd;
+            margin: 0 auto;
+        }
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 5px;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            pointer-events: none;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <label>Force ManyBody Strength: <input type="range" id="manyBody" min="-100" max="100" step="1" value="-30"></label>
+        <label>Collision Radius Factor: <input type="range" id="collide" min="0" max="50" step="1" value="15"></label>
+        <label>Link Strength: <input type="range" id="linkStrength" min="0" max="1" step="0.1" value="0.5"></label>
+    </div>
+    <svg width="800" height="600"></svg>
+    <div class="tooltip"></div>
+
+    <script>
+        const width = 800;
+        const height = 600;
+
+        const svg = d3.select("svg");
+        const tooltip = d3.select(".tooltip");
+
+        d3.json("author_network_data_processed.json").then(data => {
+            const topCountries = data.nodes
+                .map(d => d.country)
+                .reduce((acc, country) => {
+                    acc[country] = (acc[country] || 0) + 1;
+                    return acc;
+                }, {});
+            const top10Countries = Object.keys(topCountries)
+                .sort((a, b) => topCountries[b] - topCountries[a])
+                .slice(0, 10);
+            
+            const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+
+            const simulation = d3.forceSimulation(data.nodes)
+                .force("link", d3.forceLink(data.links).id(d => d.id).strength(0.5))
+                .force("charge", d3.forceManyBody().strength(-30))
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("collide", d3.forceCollide().radius(d => d3.scaleSqrt().domain([1, 20]).range([3, 12])(d.publications)));
+
+            const link = svg.append("g")
+                .selectAll("line")
+                .data(data.links)
+                .join("line")
+                .attr("stroke", "#999")
+                .attr("stroke-opacity", 0.6);
+
+            const node = svg.append("g")
+                .selectAll("circle")
+                .data(data.nodes)
+                .join("circle")
+                .attr("r", d => d3.scaleSqrt().domain([1, 20]).range([3, 12])(d.publications))
+                .attr("fill", d => top10Countries.includes(d.country) ? colorScale(d.country) : "#A9A9A9")
+                .on("mouseover", function (event, d) {
+                    node.style("opacity", n => n.country === d.country ? 1 : 0.2);
+                    link.style("opacity", l => l.source.country === d.country || l.target.country === d.country ? 1 : 0.2);
+                })
+                .on("mouseleave", function () {
+                    node.style("opacity", 1);
+                    link.style("opacity", 0.6);
+                })
+                .on("click", (event, d) => {
+                    tooltip.style("opacity", 1)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 10) + "px")
+                        .html(`<strong>${d.id}</strong><br>Country: ${d.country}<br>Publications: ${d.publications}`);
+                })
+                .call(d3.drag()
+                    .on("start", dragStarted)
+                    .on("drag", dragged)
+                    .on("end", dragEnded)
+                );
+
+            simulation.on("tick", () => {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                node
+                    .attr("cx", d => d.x)
+                    .attr("cy", d => d.y);
+            });
+
+            function dragStarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+
+            function dragEnded(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+
+            d3.select("#manyBody").on("input", function() {
+                simulation.force("charge").strength(+this.value).restart();
+            });
+
+            d3.select("#collide").on("input", function() {
+                simulation.force("collide").radius(+this.value).restart();
+            });
+
+            d3.select("#linkStrength").on("input", function() {
+                simulation.force("link").strength(+this.value).restart();
+            });
+        });
+    </script>
+</body>
+</html>
