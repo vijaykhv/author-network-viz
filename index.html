@@ -137,6 +137,13 @@
                 d.fy = event.y;
             }
 
+            function updateForces() {
+                simulation.force("charge").strength(+d3.select("#manyBody").node().value);
+                simulation.force("collide").radius(+d3.select("#collide").node().value);
+                simulation.force("link").strength(+d3.select("#linkStrength").node().value);
+                simulation.alpha(1).restart(); // Restart the simulation
+            }
+            
             function dragEnded(event, d) {
                 if (!event.active) simulation.alphaTarget(0);
                 d.fx = null;
@@ -144,25 +151,20 @@
             }
 
             d3.select("#manyBody").on("input", function () {
-                const value = +this.value;
-                simulation.force("charge").strength(value);
-                d3.select("#manyBodyValue").text(value);
-                simulation.alpha(1).restart();
+                d3.select("#manyBodyValue").text(this.value); // Update display value
+                updateForces(); // Call update function
             });
-
+            
             d3.select("#collide").on("input", function () {
-                const value = +this.value;
-                simulation.force("collide").radius(value);
-                d3.select("#collideValue").text(value);
-                simulation.alpha(1).restart();
+                d3.select("#collideValue").text(this.value); // Update display value
+                updateForces(); // Call update function
             });
-
+            
             d3.select("#linkStrength").on("input", function () {
-                const value = +this.value;
-                simulation.force("link").strength(value);
-                d3.select("#linkStrengthValue").text(value);
-                simulation.alpha(1).restart();
+                d3.select("#linkStrengthValue").text(this.value); // Update display value
+                updateForces(); // Call update function
             });
+            
         });
     </script>
 </body>
