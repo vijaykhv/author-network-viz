@@ -138,11 +138,14 @@
             }
 
             function updateForces() {
-                simulation.force("charge").strength(+d3.select("#manyBody").node().value);
-                simulation.force("collide").radius(+d3.select("#collide").node().value);
-                simulation.force("link").strength(+d3.select("#linkStrength").node().value);
+                simulation
+                    .force("charge", d3.forceManyBody().strength(+d3.select("#manyBody").node().value)) // Update charge strength
+                    .force("collide", d3.forceCollide(+d3.select("#collide").node().value)) // Update collision radius
+                    .force("link", d3.forceLink(data.links).id(d => d.id).strength(+d3.select("#linkStrength").node().value)); // Update link strength
+                
                 simulation.alpha(1).restart(); // Restart the simulation
             }
+            
             
             function dragEnded(event, d) {
                 if (!event.active) simulation.alphaTarget(0);
@@ -151,19 +154,19 @@
             }
 
             d3.select("#manyBody").on("input", function () {
-                d3.select("#manyBodyValue").text(this.value); // Update display value
-                updateForces(); // Call update function
+                d3.select("#manyBodyValue").text(this.value);
+                updateForces();
             });
             
             d3.select("#collide").on("input", function () {
-                d3.select("#collideValue").text(this.value); // Update display value
-                updateForces(); // Call update function
+                d3.select("#collideValue").text(this.value);
+                updateForces();
             });
             
             d3.select("#linkStrength").on("input", function () {
-                d3.select("#linkStrengthValue").text(this.value); // Update display value
-                updateForces(); // Call update function
-            });
+                d3.select("#linkStrengthValue").text(this.value);
+                updateForces();
+            });            
             
         });
     </script>
